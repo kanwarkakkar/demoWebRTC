@@ -11,15 +11,15 @@
 
 <body>
 
-<h1>Realtime communication with WebRTC</h1
+<h3 style="text-align: center">Realtime communication with WebRTC</h3>
 
 <div id="videos">
-    <video id="localVideo" autoplay muted></video>
-    <div id="remoteVideos"></div>
+    <video class="localVideoClass" id="localVideo" autoplay muted></video>
 
+    <video class="remoteVideoClass" id="remoteVideo" autoplay></video>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
 <script src="js/lib/adapter.js"></script>
 <script src="js/main.js"></script>
