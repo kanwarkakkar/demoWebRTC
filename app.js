@@ -16,16 +16,21 @@ io.on('connection', function (socket) {
         socket.emit('log', array);
     }
 
-    socket.on('message', function (message) {
-        log('Client said: ', message);
+    socket.on('message', function (message,room) {
+        log('Client said: ', message,room);
         // for a real app, would be room-only (not broadcast)
-        socket.to('foo').emit('message', message);
+        socket.to(room).emit('message', message);
     });
 
     socket.on('create or join', function (room) {
         log('Received request to create or join room ' + room);
 
-        var numClients = Object.keys(io.sockets.sockets).length;
+        var numClients = 0;
+        if(!io.sockets.adapter.rooms[room])
+            numClients=1;
+        else
+            numClients = io.sockets.adapter.rooms[room].length  + 1;
+
         log('Room ' + room + ' now has ' + numClients + ' client(s)');
 
         if (numClients === 1) {
@@ -44,16 +49,6 @@ io.on('connection', function (socket) {
         }
     });
 
-    socket.on('ipaddr', function () {
-        var ifaces = os.networkInterfaces();
-        for (var dev in ifaces) {
-            ifaces[dev].forEach(function (details) {
-                if (details.family === 'IPv4' && details.address !== '127.0.0.1') {
-                    socket.emit('ipaddr', details.address);
-                }
-            });
-        }
-    });
 
 });
 
@@ -61,10 +56,10 @@ io.on('connection', function (socket) {
 app.use(express.static('public'));
 
 app.get('/', (err, res) => {
-    res.send('<div>Working</div>')
+    res.sendFile(__dirname+'/app/app.html')
 });
 
-app.get('/app', (err, res) => {
 
+app.get('/app/:id?', (req, res,next) => {
     res.sendFile(__dirname + '/app/index.html');
 });
