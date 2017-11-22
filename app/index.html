@@ -15,11 +15,15 @@
 
 <div id="videos">
     <video class="localVideoClass" id="localVideo" autoplay muted></video>
-
     <video class="remoteVideoClass" id="remoteVideo" autoplay></video>
 </div>
+<footer>
+    <div id="sharing-div" class="active">
+        <div id="room-link">Waiting for someone to join this room: <a id="room-link-href" href="" target="_blank"></a></div>
+    </div>
+</footer>
 
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
 <script src="/js/lib/adapter.js"></script>
 <script src="/js/main.js"></script>

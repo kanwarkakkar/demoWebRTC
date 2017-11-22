@@ -38,7 +38,7 @@ socket.on('created', function (room) {
 });
 
 socket.on('full', function (room) {
-    console.log('Room ' + room + ' is full');
+    alert('Room ' + room + ' is full');
 });
 
 socket.on('join', function (room) {
@@ -60,7 +60,7 @@ socket.on('log', function (array) {
 
 function sendMessage(message) {
     console.log('Client sending message: ', message);
-    socket.emit('message', message,room);
+    socket.emit('message', message, room);
 }
 
 // This client receives a message
@@ -107,6 +107,7 @@ function getUserMedia() {
 }
 
 getUserMedia()
+
 function gotStream(stream) {
     console.log('Adding local stream.');
     localVideo.src = window.URL.createObjectURL(stream);
@@ -176,7 +177,6 @@ function handleIceCandidate(event) {
         console.log('End of candidates.');
     }
 }
-
 
 
 function handleCreateOfferError(event) {
@@ -348,3 +348,10 @@ function removeCN(sdpLines, mLineIndex) {
     sdpLines[mLineIndex] = mLineElements.join(' ');
     return sdpLines;
 }
+
+
+$(document).ready(function () {
+
+    $("#room-link-href").attr("href", window.location.href);
+    $('#room-link-href').text(window.location.href);
+});
