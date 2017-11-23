@@ -55,7 +55,14 @@ socket.on('joined', function (room) {
 socket.on('log', function (array) {
     console.log.apply(console, array);
 });
-
+$('form').submit(function(){
+    socket.emit('chat message', $('#m').val(),room);
+    $('#m').val('');
+    return false;
+});
+socket.on('chat message', function (msg) {
+    $('#messages').append(`<li><span><b>Kanwar</b></span>${msg}</li>`);
+});
 ////////////////////////////////////////////////
 
 function sendMessage(message) {
@@ -354,4 +361,7 @@ $(document).ready(function () {
 
     $("#room-link-href").attr("href", window.location.href);
     $('#room-link-href').text(window.location.href);
+
+
+
 });
