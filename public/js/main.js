@@ -58,15 +58,13 @@ socket.on('log', function (array) {
 });
 $('form').submit(function () {
 
+    //sendData();
+
     dataChannel.send($('#m').val());
-    showMessage('ME: ',$('#m').val());
+    showMessage('You: ',$('#m').val());
     $('#m').val('');
     return false;
 });
-// socket.on('chat message', function (msg) {
-//     $('#messages').append(`<li><span><b>Kanwar</b></span>${msg}</li>`);
-// });
-////////////////////////////////////////////////
 
 function sendMessage(message) {
     console.log('Client sending message: ', message);
@@ -103,6 +101,35 @@ socket.on('message', function (message) {
 
 var localVideo = document.querySelector('#localVideo');
 var remoteVideo = document.querySelector('#remoteVideo');
+
+var sendChannel;
+var receiveChannel;
+var pcConstraint;
+var bitrateDiv = document.querySelector('div#bitrate');
+var fileInput = document.querySelector('input#fileInput');
+var downloadAnchor = document.querySelector('a#download');
+var sendProgress = document.querySelector('progress#sendProgress');
+var receiveProgress = document.querySelector('progress#receiveProgress');
+var statusMessage = document.querySelector('span#status');
+
+var receiveBuffer = [];
+var receivedSize = 0;
+
+var bytesPrev = 0;
+var timestampPrev = 0;
+var timestampStart;
+var statsInterval = null;
+var bitrateMax = 0;
+var fileInput = document.querySelector('input#fileInput')
+
+// fileInput.addEventListener('change', handleFileInputChange, false);
+//
+// function handleFileInputChange() {
+//     var file = fileInput.files[0];
+//     if (!file) {
+//     }
+// }
+
 
 
 function getUserMedia() {
@@ -143,6 +170,121 @@ console.log('Getting user media with constraints', constraints);
 //     );
 // }
 
+function sendData() {
+    var file = fileInput.files[0];
+    console.log('File is ' + [file.name, file.size, file.type,
+        file.lastModifiedDate
+    ].join(' '));
+
+    // Handle 0 size files.
+    statusMessage.textContent = '';
+    downloadAnchor.textContent = '';
+    if (file.size === 0) {
+        bitrateDiv.innerHTML = '';
+        statusMessage.textContent = 'File is empty, please select a non-empty file';
+        return;
+    }
+    sendProgress.max = file.size;
+    receiveProgress.max = file.size;
+    var chunkSize = 16384;
+    var sliceFile = function(offset) {
+        var reader = new window.FileReader();
+        reader.onload = (function() {
+            return function(e) {
+                sendChannel.send(e.target.result);
+                if (file.size > offset + e.target.result.byteLength) {
+                    window.setTimeout(sliceFile, 0, offset + chunkSize);
+                }
+                sendProgress.value = offset + e.target.result.byteLength;
+            };
+        })(file);
+        var slice = file.slice(offset, offset + chunkSize);
+        reader.readAsArrayBuffer(slice);
+    };
+    sliceFile(0);
+}
+
+
+function onReceiveMessageCallback(event) {
+    // console.log('Received Message ' + event.data.byteLength);
+    // if(event.currentTarget.label === "DataChannel"){
+    //     showMessage('You: ',event.data)
+    // }
+    showMessage('Other: ',event.data)
+    // receiveBuffer.push(event.data);
+    // receivedSize += event.data.byteLength;
+    //
+    // receiveProgress.value = receivedSize;
+    //
+    // // we are assuming that our signaling protocol told
+    // // about the expected file size (and name, hash, etc).
+    // // var file = fileInput.files[0];
+    // var file = {
+    //     name:'IMG_0896.jpg',
+    //     size:2468649
+    // }
+    // if (receivedSize === file.size) {
+    //
+    //     var received = new window.Blob(receiveBuffer);
+    //     receiveBuffer = [];
+    //
+    //     downloadAnchor.href = URL.createObjectURL(received);
+    //     downloadAnchor.download = file.name;
+    //     downloadAnchor.textContent =
+    //         'Click to download \'' + file.name + '\' (' + receivedSize + ' bytes)';
+    //     downloadAnchor.style.display = 'block';
+    //
+    //     var bitrate = Math.round(receivedSize * 8 /
+    //         ((new Date()).getTime() - timestampStart));
+    //     bitrateDiv.innerHTML = '<strong>Average Bitrate:</strong> ' +
+    //         bitrate + ' kbits/sec (max: ' + bitrateMax + ' kbits/sec)';
+    //
+    //     if (statsInterval) {
+    //         window.clearInterval(statsInterval);
+    //         statsInterval = null;
+    //     }
+    //
+    // }
+}
+
+
+function receiveChannelCallback(event) {
+
+    console.log('Receive Channel Callback');
+    dataChannel = event.channel;
+    onDataChannelCreated(dataChannel);
+    // receiveChannel.binaryType = 'arraybuffer';
+    // receiveChannel.onmessage = onReceiveMessageCallback;
+    // receiveChannel.onopen = onReceiveChannelStateChange;
+    // receiveChannel.onclose = onReceiveChannelStateChange;
+    //
+    // receivedSize = 0;
+    // bitrateMax = 0;
+    // downloadAnchor.textContent = '';
+    // downloadAnchor.removeAttribute('download');
+    // if (downloadAnchor.href) {
+    //     URL.revokeObjectURL(downloadAnchor.href);
+    //     downloadAnchor.removeAttribute('href');
+    // }
+}
+function onSendChannelStateChange() {
+    var readyState = sendChannel.readyState;
+    console.log('Send channel state is: ' + readyState);
+}
+
+function onReceiveChannelStateChange() {
+    var readyState = receiveChannel.readyState;
+    console.log('Receive channel state is: ' + readyState);
+    if (readyState === 'open') {
+        timestampStart = (new Date()).getTime();
+        timestampPrev = timestampStart;
+        statsInterval = window.setInterval(displayStats, 500);
+        window.setTimeout(displayStats, 100);
+        window.setTimeout(displayStats, 300);
+    }
+}
+
+
 function maybeStart() {
     console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
     if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
@@ -152,16 +294,17 @@ function maybeStart() {
         isStarted = true;
         console.log('isInitiator', isInitiator);
         if (isInitiator) {
-            dataChannel = pc.createDataChannel('DataChannel', null);
-            onDataChannelCreated(dataChannel);
+             dataChannel = pc.createDataChannel('DataChannel', null);
+             // sendChannel = pc.createDataChannel('sendDataChannel');
+             // sendChannel.binaryType = 'arraybuffer';
+             // sendChannel.onopen = onSendChannelStateChange;
+             // sendChannel.onclose = onSendChannelStateChange;
+            onDataChannelCreated( dataChannel)
             doCall();
 
         } else {
-            pc.ondatachannel = function (event) {
-                console.log('ondatachannel:', event.channel);
-                dataChannel = event.channel;
-                onDataChannelCreated(dataChannel);
-            };
+            pc.ondatachannel = receiveChannelCallback;
+            fileInput.disabled = true;
         }
     }
 }
@@ -170,18 +313,19 @@ window.onbeforeunload = function () {
     };
 
 /////////////////////////////////////////////////////////
-    function onDataChannelCreated(dataChannel) {
-
+    function onDataChannelCreated(dataChannel,sendChannel) {
         dataChannel.onopen = function () {
             console.log('CHANNEL opened!!!');
         };
 
         dataChannel.onmessage = onReceiveMessageCallback;
+        // sendChannel.onopen = function () {
+        //     console.log('Channel Opened');
+        // }
+        // sendChannel.onmessage = onReceiveMessageCallback;
+
     }
 
-    function onReceiveMessageCallback(event) {
-        showMessage('You: ',event.data)
-    }
 
     function showMessage(person,data) {
 
@@ -244,7 +388,7 @@ window.onbeforeunload = function () {
     }
 
     function onCreateSessionDescriptionError(error) {
-        trace('Failed to create session description: ' + error.toString());
+        console.log('Failed to create session description: ' + error.toString());
     }
 
     function handleRemoteStreamAdded(event) {

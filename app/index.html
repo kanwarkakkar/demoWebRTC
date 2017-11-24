@@ -6,17 +6,42 @@
     <title>Realtime communication with WebRTC</title>
 
     <link rel="stylesheet" href="/css/main.css" />
-
 </head>
 
 <body>
 
 <h3 style="text-align: center">Realtime communication with WebRTC</h3>
+<section>
+    <form id="fileInfo">
+        <input type="file" id="fileInput" name="files"/>
+    </form>
 
-<div id="videos">
+    <div class="progress">
+        <div class="label">Send progress: </div>
+        <progress id="sendProgress" max="0" value="0"></progress>
+    </div>
+
+    <div class="progress">
+        <div class="label">Receive progress: </div>
+        <progress id="receiveProgress" max="0" value="0"></progress>
+    </div>
+
+    <div id="bitrate"></div>
+    <a id="download"></a>
+    <span id="status"></span>
+
+</section>
+<div style="display: none" id="videos">
     <video class="localVideoClass" id="localVideo" autoplay muted></video>
     <video class="remoteVideoClass" id="remoteVideo" autoplay></video>
 </div>
+
+    <form style=    "width: 100px;
+          height: 100px;" id="fileInfo">
+        <input type="file" id="fileInput" name="files"/>
+    </form>
+
+
 <footer>
 
     <ul id="messages"></ul>
