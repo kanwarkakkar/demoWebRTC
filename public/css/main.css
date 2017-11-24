@@ -383,3 +383,7 @@ form {
 progress {
   width: calc(100% - 8.5em);
 }
+
+.afterPeerSection{
+    display:none;
+}

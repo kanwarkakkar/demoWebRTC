@@ -8,6 +8,8 @@ var pc;
 var remoteStream;
 var turnReady;
 var dataChannel;
+var fileName;
+var fileSize;
 
 var pcConfig = {
     'iceServers': [{
@@ -170,7 +172,7 @@ function sendData() {
     console.log('File is ' + [file.name, file.size, file.type,
         file.lastModifiedDate
     ].join(' '));
-
+    dataChannel.send(JSON.stringify({fileName: file.name, fileSize: file.size}));
     // Handle 0 size files.
     statusMessage.textContent = '';
     downloadAnchor.textContent = '';
@@ -195,7 +197,7 @@ function sendData() {
         })(file);
         var slice = file.slice(offset, offset + chunkSize);
         reader.readAsArrayBuffer(slice);
-        if(sendProgress.value == sendProgress.max){
+        if (sendProgress.value == sendProgress.max) {
 
             alert('File Sent');
         }
@@ -207,7 +209,16 @@ function sendData() {
 
 
 function onReceiveMessageCallback(event) {
-    showMessage('Other: ', event.data)
+
+    try {
+        let jsonDecoded = JSON.parse(event.data)
+        fileName = jsonDecoded.fileName;
+        fileSize = jsonDecoded.fileSize;
+
+    } catch (e) {
+        showMessage('Other: ', event.data)
+    }
+
 }
 
 
@@ -216,25 +227,17 @@ function onReceiveFileCallback(event) {
     console.log('Received Message ' + event.data.byteLength);
     receiveBuffer.push(event.data);
     receivedSize += event.data.byteLength;
-
     receiveProgress.value = receivedSize;
 
-    // we are assuming that our signaling protocol told
-    // about the expected file size (and name, hash, etc).
-    // var file = fileInput.files[0];
-    var file = {
-        name: 'IMG_0896.jpg',
-        size: 2468649
-    }
-    if (receivedSize === file.size) {
+    if (receivedSize === fileSize) {
 
         var received = new window.Blob(receiveBuffer);
         receiveBuffer = [];
 
         downloadAnchor.href = URL.createObjectURL(received);
-        downloadAnchor.download = file.name;
+        downloadAnchor.download = fileName;
         downloadAnchor.textContent =
-            'Click to download \'' + file.name + '\' (' + receivedSize + ' bytes)';
+            'Click to download \'' + fileName + '\' (' + receivedSize + ' bytes)';
         downloadAnchor.style.display = 'block';
 
 
