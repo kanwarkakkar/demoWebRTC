@@ -57,12 +57,16 @@ socket.on('log', function (array) {
     console.log.apply(console, array);
 });
 $('form').submit(function () {
+    var file = fileInput.files[0];
+    if (!file) {
+        dataChannel.send($('#m').val());
+        showMessage('You: ', $('#m').val());
+        $('#m').val('');
+    } else {
 
-    //sendData();
+        sendData();
+    }
 
-    dataChannel.send($('#m').val());
-    showMessage('You: ',$('#m').val());
-    $('#m').val('');
     return false;
 });
 
@@ -122,15 +126,6 @@ var statsInterval = null;
 var bitrateMax = 0;
 var fileInput = document.querySelector('input#fileInput')
 
-// fileInput.addEventListener('change', handleFileInputChange, false);
-//
-// function handleFileInputChange() {
-//     var file = fileInput.files[0];
-//     if (!file) {
-//     }
-// }
-
-
 
 function getUserMedia() {
 
@@ -187,10 +182,10 @@ function sendData() {
     sendProgress.max = file.size;
     receiveProgress.max = file.size;
     var chunkSize = 16384;
-    var sliceFile = function(offset) {
+    var sliceFile = function (offset) {
         var reader = new window.FileReader();
-        reader.onload = (function() {
-            return function(e) {
+        reader.onload = (function () {
+            return function (e) {
                 sendChannel.send(e.target.result);
                 if (file.size > offset + e.target.result.byteLength) {
                     window.setTimeout(sliceFile, 0, offset + chunkSize);
@@ -200,87 +195,98 @@ function sendData() {
         })(file);
         var slice = file.slice(offset, offset + chunkSize);
         reader.readAsArrayBuffer(slice);
+        if(sendProgress.value == sendProgress.max){
+
+            alert('File Sent');
+        }
     };
     sliceFile(0);
+
+    $('#fileInput').val('');
 }
 
 
 function onReceiveMessageCallback(event) {
-    // console.log('Received Message ' + event.data.byteLength);
-    // if(event.currentTarget.label === "DataChannel"){
-    //     showMessage('You: ',event.data)
-    // }
-    showMessage('Other: ',event.data)
-    // receiveBuffer.push(event.data);
-    // receivedSize += event.data.byteLength;
-    //
-    // receiveProgress.value = receivedSize;
-    //
-    // // we are assuming that our signaling protocol told
-    // // about the expected file size (and name, hash, etc).
-    // // var file = fileInput.files[0];
-    // var file = {
-    //     name:'IMG_0896.jpg',
-    //     size:2468649
-    // }
-    // if (receivedSize === file.size) {
-    //
-    //     var received = new window.Blob(receiveBuffer);
-    //     receiveBuffer = [];
-    //
-    //     downloadAnchor.href = URL.createObjectURL(received);
-    //     downloadAnchor.download = file.name;
-    //     downloadAnchor.textContent =
-    //         'Click to download \'' + file.name + '\' (' + receivedSize + ' bytes)';
-    //     downloadAnchor.style.display = 'block';
-    //
-    //     var bitrate = Math.round(receivedSize * 8 /
-    //         ((new Date()).getTime() - timestampStart));
-    //     bitrateDiv.innerHTML = '<strong>Average Bitrate:</strong> ' +
-    //         bitrate + ' kbits/sec (max: ' + bitrateMax + ' kbits/sec)';
-    //
-    //     if (statsInterval) {
-    //         window.clearInterval(statsInterval);
-    //         statsInterval = null;
-    //     }
-    //
-    // }
+    showMessage('Other: ', event.data)
 }
 
+
+function onReceiveFileCallback(event) {
+    console.log(event)
+    console.log('Received Message ' + event.data.byteLength);
+    receiveBuffer.push(event.data);
+    receivedSize += event.data.byteLength;
+
+    receiveProgress.value = receivedSize;
+
+    // we are assuming that our signaling protocol told
+    // about the expected file size (and name, hash, etc).
+    // var file = fileInput.files[0];
+    var file = {
+        name: 'IMG_0896.jpg',
+        size: 2468649
+    }
+    if (receivedSize === file.size) {
+
+        var received = new window.Blob(receiveBuffer);
+        receiveBuffer = [];
+
+        downloadAnchor.href = URL.createObjectURL(received);
+        downloadAnchor.download = file.name;
+        downloadAnchor.textContent =
+            'Click to download \'' + file.name + '\' (' + receivedSize + ' bytes)';
+        downloadAnchor.style.display = 'block';
+
+
+        if (statsInterval) {
+            window.clearInterval(statsInterval);
+            statsInterval = null;
+        }
+
+        alert('File Received');
+
+    }
+}
 
 function receiveChannelCallback(event) {
 
     console.log('Receive Channel Callback');
-    dataChannel = event.channel;
-    onDataChannelCreated(dataChannel);
-    // receiveChannel.binaryType = 'arraybuffer';
-    // receiveChannel.onmessage = onReceiveMessageCallback;
-    // receiveChannel.onopen = onReceiveChannelStateChange;
-    // receiveChannel.onclose = onReceiveChannelStateChange;
-    //
-    // receivedSize = 0;
-    // bitrateMax = 0;
-    // downloadAnchor.textContent = '';
-    // downloadAnchor.removeAttribute('download');
-    // if (downloadAnchor.href) {
-    //     URL.revokeObjectURL(downloadAnchor.href);
-    //     downloadAnchor.removeAttribute('href');
-    // }
+    if (event && event.channel) {
+        if (event.channel.label === "DataChannel") {
+            dataChannel = event.channel;
+            onDataChannelCreated(dataChannel);
+        } else if (event.channel.label === "sendDataChannel") {
+            sendChannel = event.channel;
+            sendChannel.binaryType = 'arraybuffer';
+            sendChannel.onmessage = onReceiveFileCallback;
+            sendChannel.onopen = onReceiveChannelStateChange;
+            sendChannel.onclose = onReceiveChannelStateChange;
+
+            receivedSize = 0;
+            bitrateMax = 0;
+            downloadAnchor.textContent = '';
+            downloadAnchor.removeAttribute('download');
+            if (downloadAnchor.href) {
+                URL.revokeObjectURL(downloadAnchor.href);
+                downloadAnchor.removeAttribute('href');
+            }
+
+        }
+    }
+
 }
+
 function onSendChannelStateChange() {
     var readyState = sendChannel.readyState;
     console.log('Send channel state is: ' + readyState);
 }
 
 function onReceiveChannelStateChange() {
-    var readyState = receiveChannel.readyState;
+    var readyState = sendChannel.readyState;
     console.log('Receive channel state is: ' + readyState);
     if (readyState === 'open') {
         timestampStart = (new Date()).getTime();
         timestampPrev = timestampStart;
-        statsInterval = window.setInterval(displayStats, 500);
-        window.setTimeout(displayStats, 100);
-        window.setTimeout(displayStats, 300);
     }
 }
 
@@ -294,137 +300,140 @@ function maybeStart() {
         isStarted = true;
         console.log('isInitiator', isInitiator);
         if (isInitiator) {
-             dataChannel = pc.createDataChannel('DataChannel', null);
-             // sendChannel = pc.createDataChannel('sendDataChannel');
-             // sendChannel.binaryType = 'arraybuffer';
-             // sendChannel.onopen = onSendChannelStateChange;
-             // sendChannel.onclose = onSendChannelStateChange;
-            onDataChannelCreated( dataChannel)
+            dataChannel = pc.createDataChannel('DataChannel', null);
+            sendChannel = pc.createDataChannel('sendDataChannel');
+            sendChannel.binaryType = 'arraybuffer';
+            sendChannel.onopen = onSendChannelStateChange;
+            sendChannel.onclose = onSendChannelStateChange;
+            onDataChannelCreated(dataChannel);
+            onFileSharingDataChannelCreated(sendChannel);
             doCall();
 
         } else {
             pc.ondatachannel = receiveChannelCallback;
-            fileInput.disabled = true;
         }
     }
 }
-window.onbeforeunload = function () {
-        sendMessage('bye');
-    };
+
 
 /////////////////////////////////////////////////////////
-    function onDataChannelCreated(dataChannel,sendChannel) {
-        dataChannel.onopen = function () {
-            console.log('CHANNEL opened!!!');
-        };
+function onDataChannelCreated(dataChannel, sendChannel) {
+    dataChannel.onopen = function () {
+        console.log('CHANNEL opened!!!');
+    };
 
-        dataChannel.onmessage = onReceiveMessageCallback;
-        // sendChannel.onopen = function () {
-        //     console.log('Channel Opened');
-        // }
-        // sendChannel.onmessage = onReceiveMessageCallback;
+    dataChannel.onmessage = onReceiveMessageCallback;
+}
 
+function onFileSharingDataChannelCreated(channel) {
+    sendChannel.onopen = function () {
+        console.log('Channel Opened');
     }
+    sendChannel.onmessage = onReceiveFileCallback;
+}
 
 
-    function showMessage(person,data) {
+function showMessage(person, data) {
 
-        $('#messages').append(`<li><span><b>${person } </b></span>${data}</li>`);
+    $('#messages').append(`<li><span><b>${person } </b></span>${data}</li>`);
+}
+
+function createPeerConnection() {
+    try {
+        pc = new RTCPeerConnection(null);
+        pc.onicecandidate = handleIceCandidate;
+        pc.onaddstream = handleRemoteStreamAdded;
+        pc.onremovestream = handleRemoteStreamRemoved;
+
+        console.log('Created RTCPeerConnnection');
+    } catch (e) {
+        console.log('Failed to create PeerConnection, exception: ' + e.message);
+        alert('Cannot create RTCPeerConnection object.');
+        return;
     }
+}
 
-    function createPeerConnection() {
-        try {
-            pc = new RTCPeerConnection(null);
-            pc.onicecandidate = handleIceCandidate;
-            pc.onaddstream = handleRemoteStreamAdded;
-            pc.onremovestream = handleRemoteStreamRemoved;
-
-            console.log('Created RTCPeerConnnection');
-        } catch (e) {
-            console.log('Failed to create PeerConnection, exception: ' + e.message);
-            alert('Cannot create RTCPeerConnection object.');
-            return;
-        }
+function handleIceCandidate(event) {
+    console.log('icecandidate event: ', event);
+    if (event.candidate) {
+        sendMessage({
+            type: 'candidate',
+            label: event.candidate.sdpMLineIndex,
+            id: event.candidate.sdpMid,
+            candidate: event.candidate.candidate
+        });
+    } else {
+        console.log('End of candidates.');
     }
-
-    function handleIceCandidate(event) {
-        console.log('icecandidate event: ', event);
-        if (event.candidate) {
-            sendMessage({
-                type: 'candidate',
-                label: event.candidate.sdpMLineIndex,
-                id: event.candidate.sdpMid,
-                candidate: event.candidate.candidate
-            });
-        } else {
-            console.log('End of candidates.');
-        }
-    }
+}
 
 
-    function handleCreateOfferError(event) {
-        console.log('createOffer() error: ', event);
-    }
+function handleCreateOfferError(event) {
+    console.log('createOffer() error: ', event);
+}
 
-    function doCall() {
-        console.log('Sending offer to peer');
-        pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
-    }
+function doCall() {
+    console.log('Sending offer to peer');
+    pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
+}
 
-    function doAnswer() {
-        console.log('Sending answer to peer.');
-        pc.createAnswer().then(
-            setLocalAndSendMessage,
-            onCreateSessionDescriptionError
-        );
-    }
+function doAnswer() {
+    console.log('Sending answer to peer.');
+    pc.createAnswer().then(
+        setLocalAndSendMessage,
+        onCreateSessionDescriptionError
+    );
+}
 
-    function setLocalAndSendMessage(sessionDescription) {
-        // Set Opus as the preferred codec in SDP if Opus is present.
-        //  sessionDescription.sdp = preferOpus(sessionDescription.sdp);
-        pc.setLocalDescription(sessionDescription);
-        console.log('setLocalAndSendMessage sending message', sessionDescription);
-        sendMessage(sessionDescription);
-    }
+function setLocalAndSendMessage(sessionDescription) {
+    // Set Opus as the preferred codec in SDP if Opus is present.
+    //  sessionDescription.sdp = preferOpus(sessionDescription.sdp);
+    pc.setLocalDescription(sessionDescription);
+    console.log('setLocalAndSendMessage sending message', sessionDescription);
+    sendMessage(sessionDescription);
+}
 
-    function onCreateSessionDescriptionError(error) {
-        console.log('Failed to create session description: ' + error.toString());
-    }
+function onCreateSessionDescriptionError(error) {
+    console.log('Failed to create session description: ' + error.toString());
+}
 
-    function handleRemoteStreamAdded(event) {
-        console.log('Remote stream added.');
-        remoteVideo.src = window.URL.createObjectURL(event.stream);
-        remoteVideo.classList.remove("remoteVideoClass");
-        remoteVideo.className += "localVideoClass";
-        localVideo.classList.remove("localVideoClass");
-        localVideo.className += "remoteVideoClass";
-        remoteStream = event.stream;
-    }
+function handleRemoteStreamAdded(event) {
+    console.log('Remote stream added.');
+    remoteVideo.src = window.URL.createObjectURL(event.stream);
+    remoteVideo.classList.remove("remoteVideoClass");
+    remoteVideo.className += "localVideoClass";
+    localVideo.classList.remove("localVideoClass");
+    localVideo.className += "remoteVideoClass";
+    remoteStream = event.stream;
+}
 
-    function handleRemoteStreamRemoved(event) {
-        console.log('Remote stream removed. Event: ', event);
-    }
+function handleRemoteStreamRemoved(event) {
+    console.log('Remote stream removed. Event: ', event);
+}
 
-    function hangup() {
-        console.log('Hanging up.');
-        stop();
-        sendMessage('bye');
-    }
+function hangup() {
+    console.log('Hanging up.');
+    stop();
+    sendMessage('bye');
+}
 
-    function handleRemoteHangup() {
-        console.log('Session terminated.');
-        stop();
-        isInitiator = false;
-    }
+function handleRemoteHangup() {
+    console.log('Session terminated.');
+    stop();
+    isInitiator = false;
+}
 
-    function stop() {
-        isStarted = false;
-        // isAudioMuted = false;
-        // isVideoMuted = false;
-        pc.close();
-        pc = null;
-    }
+function stop() {
+    isStarted = false;
+    // isAudioMuted = false;
+    // isVideoMuted = false;
+    pc.close();
+    pc = null;
+}
 
+window.onbeforeunload = function () {
+    sendMessage('bye');
+};
 
 //
 //
@@ -537,10 +546,10 @@ window.onbeforeunload = function () {
 // }
 
 
-    $(document).ready(function () {
+$(document).ready(function () {
 
-        $("#room-link-href").attr("href", window.location.href);
-        $('#room-link-href').text(window.location.href);
+    $("#room-link-href").attr("href", window.location.href);
+    $('#room-link-href').text(window.location.href);
 
 
-    });
+});

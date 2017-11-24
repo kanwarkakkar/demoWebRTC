@@ -11,17 +11,20 @@
 <body>
 
 <h3 style="text-align: center">Realtime communication with WebRTC</h3>
-<section>
-    <form id="fileInfo">
-        <input type="file" id="fileInput" name="files"/>
-    </form>
-
+<section style="
+    margin-left: 30%;
+    z-index: 100;
+    width: 50%;
+    margin-bottom: 2%;
+    bottom: 0;
+    position: fixed;
+">
     <div class="progress">
         <div class="label">Send progress: </div>
         <progress id="sendProgress" max="0" value="0"></progress>
     </div>
 
-    <div class="progress">
+    <div style="display: none" class="progress">
         <div class="label">Receive progress: </div>
         <progress id="receiveProgress" max="0" value="0"></progress>
     </div>
@@ -31,13 +34,16 @@
     <span id="status"></span>
 
 </section>
-<div style="display: none" id="videos">
+<div  id="videos">
     <video class="localVideoClass" id="localVideo" autoplay muted></video>
     <video class="remoteVideoClass" id="remoteVideo" autoplay></video>
 </div>
 
-    <form style=    "width: 100px;
-          height: 100px;" id="fileInfo">
+    <form style="
+          background: none;
+          height: 100px;
+          margin-left: 15%;
+          "  id="fileInfo">
         <input type="file" id="fileInput" name="files"/>
     </form>
 
