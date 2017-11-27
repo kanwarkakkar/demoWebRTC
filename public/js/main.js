@@ -199,7 +199,7 @@ function sendData() {
         reader.readAsArrayBuffer(slice);
         if (sendProgress.value == sendProgress.max) {
 
-            alert('File Sent');
+            // alert('File Sent');
         }
     };
     sliceFile(0);
@@ -223,7 +223,6 @@ function onReceiveMessageCallback(event) {
 
 
 function onReceiveFileCallback(event) {
-    console.log(event)
     console.log('Received Message ' + event.data.byteLength);
     receiveBuffer.push(event.data);
     receivedSize += event.data.byteLength;
